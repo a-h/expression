@@ -2,14 +2,16 @@ package expression
 
 import (
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"strings"
 )
 
 func getCode(src string, node ast.Node) string {
-	if !node.Pos().IsValid() || !node.End().IsValid() {
+	if node == nil || !node.Pos().IsValid() || !node.End().IsValid() {
 		return ""
 	}
 	end := int(node.End()) - 1
@@ -22,7 +24,20 @@ func getCode(src string, node ast.Node) string {
 var ErrContainerFuncNotFound = errors.New("parser error: templ container function not found")
 
 func ParseExpression(content string) (expr string, err error) {
+	//TODO: Handle whitespace between else and bracket etc.
+	if strings.HasPrefix(content, "else {") {
+		return "else {", nil
+	}
 	fset := token.NewFileSet() // positions are relative to fset
+
+	//TODO: Handle whitespace etc.
+	if strings.HasPrefix(content, "else if") {
+		expr, err = ParseExpression(strings.TrimPrefix(content, "else "))
+		if err != nil {
+			return expr, err
+		}
+		return "else " + expr, nil
+	}
 
 	prefix := "package main\nfunc templ_container() {\n"
 	src := prefix + content
@@ -55,8 +70,22 @@ func ParseExpression(content string) (expr string, err error) {
 			// No Go statement found.
 			return false
 		}
-		// We found what we wanted, stop looking.
-		expr = getCode(src, stmt)
+		// We found something, stop looking.
+		switch stmt := stmt.(type) {
+		case *ast.IfStmt:
+			// Only get the code up until the first `{`.
+			expr = getCode(src, stmt)[:int(stmt.Body.Lbrace)-int(stmt.If)+1]
+		case *ast.ForStmt:
+			// Only get the code up until the first `{`.
+			expr = getCode(src, stmt)[:int(stmt.Body.Lbrace)-int(stmt.For)+1]
+		case *ast.RangeStmt:
+			// Only get the code up until the first `{`.
+			expr = getCode(src, stmt)[:int(stmt.Body.Lbrace)-int(stmt.For)+1]
+		default:
+			// Just an expression.
+			fmt.Printf("%T\n", stmt)
+			expr = getCode(src, stmt)
+		}
 
 		// If we have a parse error that's later than the position of our expression we can ignore it.
 		// Because we only want to nibble the first valid expression.
