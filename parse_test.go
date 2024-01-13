@@ -8,6 +8,78 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+// If, Else, For, Range, Switch, Case, Default, Expression, Children
+
+func TestSwitch(t *testing.T) {
+	suffixes := []string{
+		"\ncase 1:\n\t<div>\n\tcase 2:\n\t\t<div>\n\tdefault:\n\t\t<div>\n\t</div>}",
+		"\ndefault:\n\t<div>\n\t</div>}",
+		"\n}",
+	}
+	tests := []testInput{
+		{
+			name:  "switch",
+			input: `switch {`,
+		},
+		{
+			name:  "switch with expression",
+			input: `switch x {`,
+		},
+		{
+			name:  "switch with function call",
+			input: `switch pkg.Func() {`,
+		},
+		{
+			name:  "type switch",
+			input: `switch x := x.(type) {`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
+
+func TestCase(t *testing.T) {
+	suffixes := []string{
+		"\n<div>\ncase 1 content\n\t</div>\n\tcase 3:",
+		"\ndefault:\n\t<div>\n\t</div>}",
+		"\n}",
+	}
+	tests := []testInput{
+		{
+			name:  "case",
+			input: `case 1:`,
+		},
+		{
+			name:  "case with expression",
+			input: `case x > 3:`,
+		},
+		{
+			name:  "case with function call",
+			input: `case pkg.Func():`,
+		},
+		{
+			name:  "case with multiple expressions",
+			input: `case x > 3, x < 4:`,
+		},
+		{
+			name:  "case with multiple expressions and default",
+			input: `case x > 3, x < 4, x == 5:`,
+		},
+		{
+			name:  "case with type switch",
+			input: `case bool:`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
+
 func TestIf(t *testing.T) {
 	suffixes := []string{
 		"\n<div>\nif true content\n\t</div>}",
