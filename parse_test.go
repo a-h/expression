@@ -8,7 +8,116 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-// If, Else, For, Range, Switch, Case, Default, Expression, Children
+func TestIf(t *testing.T) {
+	suffixes := []string{
+		"\n<div>\nif true content\n\t</div>}",
+	}
+	tests := []testInput{
+		{
+			name:  "basic if",
+			input: `if true {`,
+		},
+		{
+			name:  "if function call",
+			input: `if pkg.Func() {`,
+		},
+		{
+			name:  "compound",
+			input: "if x := val(); x > 3 {",
+		},
+		{
+			name:  "if multiple",
+			input: `if x && y && (!z) {`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
+
+func TestElse(t *testing.T) {
+	suffixes := []string{
+		"\n<div>\nelse content\n\t</div>}",
+	}
+	tests := []testInput{
+		{
+			name:  "else",
+			input: `else {`,
+		},
+		{
+			name:  "else with spacing",
+			input: `else    {`,
+		},
+		{
+			name:  "boolean",
+			input: `else if true {`,
+		},
+		{
+			name:  "boolean with spacing",
+			input: `else   if   true {`,
+		},
+		{
+			name:  "func",
+			input: `else if pkg.Func() {`,
+		},
+		{
+			name:  "expression",
+			input: "else if x > 3 {",
+		},
+		{
+			name:  "multiple",
+			input: `else if x && y && (!z) {`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
+
+func TestFor(t *testing.T) {
+	suffixes := []string{
+		"\n<div>\nloop content\n\t</div>}",
+	}
+	tests := []testInput{
+		{
+			name:  "three component",
+			input: `for i := 0; i < 100; i++ {`,
+		},
+		{
+			name:  "three component, empty",
+			input: `for ; ; i++ {`,
+		},
+		{
+			name:  "while",
+			input: `for n < 5 {`,
+		},
+		{
+			name:  "infinite",
+			input: `for {`,
+		},
+		{
+			name:  "range with index",
+			input: `for k, v := range m {`,
+		},
+		{
+			name:  "range with key only",
+			input: `for k := range m {`,
+		},
+		{
+			name:  "channel receive",
+			input: `for x := range channel {`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
 
 func TestSwitch(t *testing.T) {
 	suffixes := []string{
@@ -72,108 +181,9 @@ func TestCase(t *testing.T) {
 			name:  "case with type switch",
 			input: `case bool:`,
 		},
-	}
-	for _, test := range tests {
-		for i, suffix := range suffixes {
-			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
-		}
-	}
-}
-
-func TestIf(t *testing.T) {
-	suffixes := []string{
-		"\n<div>\nif true content\n\t</div>}",
-	}
-	tests := []testInput{
 		{
-			name:  "basic if",
-			input: `if true {`,
-		},
-		{
-			name:  "if function call",
-			input: `if pkg.Func() {`,
-		},
-		{
-			name:  "compound",
-			input: "if x := val(); x > 3 {",
-		},
-		{
-			name:  "if multiple",
-			input: `if x && y && (!z) {`,
-		},
-	}
-	for _, test := range tests {
-		for i, suffix := range suffixes {
-			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
-		}
-	}
-}
-
-func TestElse(t *testing.T) {
-	suffixes := []string{
-		"\n<div>\nelse content\n\t</div>}",
-	}
-	tests := []testInput{
-		{
-			name:  "else",
-			input: `else {`,
-		},
-		{
-			name:  "boolean",
-			input: `else if true {`,
-		},
-		{
-			name:  "func",
-			input: `else if pkg.Func() {`,
-		},
-		{
-			name:  "expression",
-			input: "else if x > 3 {",
-		},
-		{
-			name:  "multiple",
-			input: `else if x && y && (!z) {`,
-		},
-	}
-	for _, test := range tests {
-		for i, suffix := range suffixes {
-			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
-		}
-	}
-}
-
-func TestFor(t *testing.T) {
-	suffixes := []string{
-		"\n<div>\nloop content\n\t</div>}",
-	}
-	tests := []testInput{
-		{
-			name:  "three component",
-			input: `for i := 0; i < 100; i++ {`,
-		},
-		{
-			name:  "three component, empty",
-			input: `for ; ; i++ {`,
-		},
-		{
-			name:  "while",
-			input: `for n < 5 {`,
-		},
-		{
-			name:  "infinite",
-			input: `for {`,
-		},
-		{
-			name:  "range with index",
-			input: `for k, v := range m {`,
-		},
-		{
-			name:  "range with key only",
-			input: `for k := range m {`,
-		},
-		{
-			name:  "channel receive",
-			input: `for x := range channel {`,
+			name:  "default",
+			input: "default:",
 		},
 	}
 	for _, test := range tests {
@@ -210,6 +220,45 @@ func TestExpression(t *testing.T) {
 				"namea": "name_a",
 			  "nameb": "name_b",
 			})`,
+		},
+	}
+	for _, test := range tests {
+		for i, suffix := range suffixes {
+			t.Run(fmt.Sprintf("%s_%d", test.name, i), run(test, suffix))
+		}
+	}
+}
+
+func TestChildren(t *testing.T) {
+	suffixes := []string{
+		" }",
+		" } <div>Other content</div>",
+		"", // End of file.
+	}
+	tests := []testInput{
+		{
+			name:  "children",
+			input: `children...`,
+		},
+		{
+			name:  "function",
+			input: `components.Spread()...`,
+		},
+		{
+			name:  "alternative variable",
+			input: `components...`,
+		},
+		{
+			name:  "index",
+			input: `groups[0]...`,
+		},
+		{
+			name:  "map",
+			input: `components["name"]...`,
+		},
+		{
+			name:  "map func key",
+			input: `components[getKey(ctx)]...`,
 		},
 	}
 	for _, test := range tests {

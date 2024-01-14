@@ -25,37 +25,34 @@ var ErrExpectedNodeNotFound = errors.New("parser error: expected node not found"
 
 var prefixRegexps = []*regexp.Regexp{
 	regexp.MustCompile(`^if`),
-	regexp.MustCompile(`^else`),
 	regexp.MustCompile(`^for`),
 	regexp.MustCompile(`^switch`),
-	regexp.MustCompile(`^case`),
-	regexp.MustCompile(`^default`),
+	regexp.MustCompile(`^(case|default)`),
 }
 var prefixExtractors = []Extractor{
 	IfExtractor{},
-	ElseExtractor{},
 	ForExtractor{},
 	SwitchExtractor{},
 	CaseExtractor{},
-	DefaultExtractor{},
 }
 
+var elseRegex = regexp.MustCompile(`^else\s+{`)
+var elseIfRegex = regexp.MustCompile(`^(else\s+)if`)
+
 func ParseExpression(content string) (expr string, err error) {
-	//TODO: Handle whitespace between else and bracket etc.
-	if strings.HasPrefix(content, "else {") {
-		return "else {", nil
+	if match := elseRegex.FindString(content); match != "" {
+		return match, nil
 	}
 
-	//TODO: Handle whitespace etc.
-	if strings.HasPrefix(content, "else if") {
-		expr, err = parseExp(strings.TrimPrefix(content, "else "), IfExtractor{})
+	if groups := elseIfRegex.FindStringSubmatch(content); len(groups) > 1 {
+		expr, err = parseExp(strings.TrimPrefix(content, groups[1]), IfExtractor{})
 		if err != nil {
 			return expr, err
 		}
-		return "else " + expr, nil
+		return groups[1] + expr, nil
 	}
 
-	if strings.HasPrefix(content, "case") {
+	if strings.HasPrefix(content, "case") || strings.HasPrefix(content, "default") {
 		expr = "switch {\n" + content + "\n}"
 		expr, err = parseExp(expr, CaseExtractor{})
 		if err != nil {
@@ -78,8 +75,11 @@ func ParseExpression(content string) (expr string, err error) {
 	if err != nil {
 		return expr, err
 	}
+	// If the expression ends with `...` then it's a child spread expression.
+	if suffix := content[len(expr):]; strings.HasPrefix(suffix, "...") {
+		expr += suffix[:3]
+	}
 	return expr, nil
-	//TODO: If we're doing an expression, check the end to see if it's children.
 }
 
 type IfExtractor struct{}
@@ -90,17 +90,6 @@ func (e IfExtractor) Code(src string, body []ast.Stmt) (expr string, err error) 
 		return expr, ErrExpectedNodeNotFound
 	}
 	expr = getCode(src, stmt)[:int(stmt.Body.Lbrace)-int(stmt.If)+1]
-	return expr, nil
-}
-
-type ElseExtractor struct{}
-
-func (e ElseExtractor) Code(src string, body []ast.Stmt) (expr string, err error) {
-	stmt, ok := body[0].(*ast.ExprStmt)
-	if !ok {
-		return expr, ErrExpectedNodeNotFound
-	}
-	expr = getCode(src, stmt)
 	return expr, nil
 }
 
@@ -154,17 +143,6 @@ func (e CaseExtractor) Code(src string, body []ast.Stmt) (expr string, err error
 	return src[start:end], nil
 }
 
-type DefaultExtractor struct{}
-
-func (e DefaultExtractor) Code(src string, body []ast.Stmt) (expr string, err error) {
-	stmt, ok := body[0].(*ast.CaseClause)
-	if !ok {
-		return expr, ErrExpectedNodeNotFound
-	}
-	expr = getCode(src, stmt)
-	return expr, nil
-}
-
 type ExprExtractor struct{}
 
 func (e ExprExtractor) Code(src string, body []ast.Stmt) (expr string, err error) {
@@ -173,21 +151,6 @@ func (e ExprExtractor) Code(src string, body []ast.Stmt) (expr string, err error
 		return expr, ErrExpectedNodeNotFound
 	}
 	expr = getCode(src, stmt)
-	return expr, nil
-}
-
-type ChildrenExtractor struct{}
-
-func (e ChildrenExtractor) Code(src string, body []ast.Stmt) (expr string, err error) {
-	stmt, ok := body[0].(*ast.ExprStmt)
-	if !ok {
-		return expr, ErrExpectedNodeNotFound
-	}
-	expr = getCode(src, stmt)
-	// Check that the three chars after expr in the source are `...`
-	if !strings.HasPrefix(src[stmt.End():], "...") {
-		return expr, ErrExpectedNodeNotFound
-	}
 	return expr, nil
 }
 
